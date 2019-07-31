@@ -8,8 +8,11 @@ export IrreducibleDegenerateSet, DegenSettings, DegenData, printBound, printVari
 	checkVarBounds, printRows, ProblemStats, assembleProblemStats, stringProblemStats, printProblemStats,
 	printVariableDiagnostics, round_to_bounds!, checkEquationScaling
 
-importall JuMP
+using JuMP
 import MathProgBase
+using Printf
+using SparseArrays
+import LinearAlgebra
 
 include("types.jl")
 include("model_diagnostics.jl")

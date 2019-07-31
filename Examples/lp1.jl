@@ -4,8 +4,9 @@
 # ####################################################
 
 # Define problem
-include("../DegeneracyHunter.jl")
 using JuMP
+using Ipopt
+using DegeneracyHunter
 
 # Define problem
 function lp1()
@@ -25,7 +26,7 @@ function lp1()
 end
 
 function initialize!(m::Model)
-	x = getvariable(m,:x)
+	x = getindex(m,:x)
 	setvalue(x[1], 1.0)
 	setvalue(x[2], 5.0)
 	setvalue(x[3], -1.0)
@@ -37,6 +38,7 @@ end
 
 # Create and initialize model
 m = lp1()
+JuMP.setsolver(m,IpoptSolver())
 initialize!(m) 
 
 # Check initialization
@@ -46,12 +48,12 @@ DegeneracyHunter.printVariableDiagnostics(m)
 DegeneracyHunter.printInfeasibleEquations(m, 0.001)
 
 # Check for degeneracy constraints
-DegeneracyHunter.degeneracyHunter(m, includeBounds=true)
+DegeneracyHunter.degeneracyHunter(m, IpoptSolver(), includeBounds=true)
 
 # Solve model
-tic()
+t0 = time()
 status = solve(m)
-tm = toq()
+tm = time() - t0
 
 # Print inactive constraints at solution
 DegeneracyHunter.printInactiveEquations(m)

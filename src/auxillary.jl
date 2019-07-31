@@ -4,15 +4,15 @@
 ################
 # Hidden Auxiliary Functions
 
-function checkJacobianScaling(m::Model, dd::DegenData, f=STDOUT)
+function checkJacobianScaling(m::Model, dd::DegenData, f=stdout)
 
 	# Determine location of non-zeros. This is important as fixed variables
 	# are still in the Jacobian
-	nz_ = find(dd.J .!= 0)
+	nz_ = findall(dd.J .!= 0)
 
 	# Determine location of smallest and largest elements
-	s_ = nz_[indmin(abs.(dd.J[nz_]))]
-	l_ = indmax(abs.(dd.J))
+	s_ = nz_[argmin(abs.(dd.J[nz_]))]
+	l_ = argmax(abs.(dd.J))
 
 
 	println(f," ")
@@ -34,7 +34,7 @@ function checkJacobianScaling(m::Model, dd::DegenData, f=STDOUT)
 
 end
 
-function checkActiveJacobianRows(m::Model, dd::DegenData, f=STDOUT)
+function checkActiveJacobianRows(m::Model, dd::DegenData, f=stdout)
 	for i = 1:dd.nLambda
 		if(sum(abs.(dd.J_active[i,:])) < 1E-4)
 			println(f,"Warning!!! (Near) singular Jacobian row for ")
@@ -46,7 +46,7 @@ function checkActiveJacobianRows(m::Model, dd::DegenData, f=STDOUT)
 	return nothing
 end
 
-function checkActiveJacobianEntries(m::Model, dd::DegenData, f=STDOUT)
+function checkActiveJacobianEntries(m::Model, dd::DegenData, f=stdout)
 	for i = 1:size(dd.J_active,1)
 		nan_ = sum(isnan.(dd.J_active[i,:])) > 0
 		inf_ = sum(isinf.(dd.J_active[i,:])) > 0
@@ -69,7 +69,7 @@ function checkActiveJacobianEntries(m::Model, dd::DegenData, f=STDOUT)
 	return nothing
 end
 
-function printEquation(m::Model, dd::DegenData, i::Int64, f=STDOUT)
+function printEquation(m::Model, dd::DegenData, i::Int64, f=stdout)
 
 	nLin = MathProgBase.numlinconstr(m)
 	nQuad = MathProgBase.numquadconstr(m)
@@ -89,7 +89,7 @@ function printEquation(m::Model, dd::DegenData, i::Int64, f=STDOUT)
 end
 
 #=
-function printRow(m::Model, dd::DegenData, j::Int64, epsiActive::Float64, f=STDOUT)
+function printRow(m::Model, dd::DegenData, j::Int64, epsiActive::Float64, f=stdout)
 
 	if(j <= length(dd.gMap))
 		i = dd.gMap[j]
@@ -108,7 +108,7 @@ function printRow(m::Model, dd::DegenData, j::Int64, epsiActive::Float64, f=STDO
 end
 =#
 
-function printVariable(m::Model, dd::DegenData, i::Int64, f=STDOUT)
+function printVariable(m::Model, dd::DegenData, i::Int64, f=stdout)
 
 	v = Variable(m, dd.vMap[i])
 	println(f,"x[",string(i),"] = ",getname(v))
@@ -117,20 +117,20 @@ function printVariable(m::Model, dd::DegenData, i::Int64, f=STDOUT)
 
 end
 
-function printVariable(m::Model, i::Int64, f=STDOUT)
+function printVariable(m::Model, i::Int64, f=stdout)
 	v = Variable(m, i)
 	println(f,"x[",string(i),"] = ",getname(v))
 	return nothing
 end
 
-function printJacobianForEquation(m::Model, dd::DegenData, r::Int64, f = STDOUT)
+function printJacobianForEquation(m::Model, dd::DegenData, r::Int64, f = stdout)
 
 	printEquation(m, dd, f)
 
-	if(dd.Jactive == Void)
+	if(dd.Jactive === nothing)
 		# Use sparse tuple representation of full Jacobian
 
-		k = find(r == dd.iR)
+		k = findall(r == dd.iR)
 		for i=1:length(k)
 			J_ = dd.J[k[i]]
 			if(isnan(J_) || J_ != 0)
@@ -173,14 +173,14 @@ function printVariablesInEquation(m::Model, dd::DegenData, r::Array{Int64,1}, pr
 		k = Array{Int64}(0)
 
 		for i = 1:length(r)
-			t = find(dd.iR .== r[i])
+			t = findall(dd.iR .== r[i])
 			for j = 1:length(t)
 				push!(k, t[j])
 			end
 		end
 
 	else
-		k = find(dd.iR .== r)
+		k = findall(dd.iR .== r)
 	end
 
 	if(length(unique(dd.jC[k])) < 50)
@@ -199,7 +199,7 @@ function printVariablesInEquation(m::Model, dd::DegenData, r::Array{Int64,1}, pr
 				up = getupperbound(v)
 
 				if(abs(dd.x[j] - lo) < 1E-4)
-					print_with_color(:red,f, string(lo))
+					printstyled(color=:red,f, string(lo))
 				else
 					print(f,string(lo))
 				end
@@ -207,7 +207,7 @@ function printVariablesInEquation(m::Model, dd::DegenData, r::Array{Int64,1}, pr
 				print(f,",")
 
 				if(abs(dd.x[j] - up) < 1E-4)
-					print_with_color(:blue,f, string(up))
+					printstyled(color=:blue,f, string(up))
 				else
 					print(f,string(up))
 				end
@@ -226,7 +226,7 @@ function printVariablesInEquation(m::Model, dd::DegenData, r::Array{Int64,1}, pr
 
 end
 
-function printIDS(ids::IrreducibleDegenerateSet, m::Model, dd::DegenData, ds::DegenSettings, f=STDOUT)
+function printIDS(ids::IrreducibleDegenerateSet, m::Model, dd::DegenData, ds::DegenSettings, f=stdout)
 
 	epsiLambda = ds.epsiLambda
 	epsiActive = ds.epsiActive
@@ -237,7 +237,7 @@ function printIDS(ids::IrreducibleDegenerateSet, m::Model, dd::DegenData, ds::De
 
 		nLambda = length(ids.lambda)
 
-		r = find(abs.(ids.lambda) .> epsiLambda)
+		r = findall(abs.(ids.lambda) .> epsiLambda)
 
 		for j = r
 

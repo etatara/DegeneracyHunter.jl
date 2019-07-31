@@ -13,7 +13,7 @@ function degeneracyHunter(m::Model, mySolver;
 	epsiLambda::Float64 = 1E-6,
 	lambdaM::Float64 = 1E5,
 	printThresholdSmallestSingularVector = 0.0,
-	f=STDOUT)
+	f=stdout)
 
 	ds = DegenSettings(includeBounds, includeWeaklyActive, removeFixedVar,
 		onlyCandidateSearch, epsiActive, epsiLambda, lambdaM, mySolver, 
@@ -111,12 +111,12 @@ function degeneracyHunter(m::Model, ds::DegenSettings, f)
 
 # Add only active bounds to Jacobian
 	print(f,"Adding Jacobian elements for bounds... ")
-	tic()
+	t0 = time()
 
 	# Number of constraints
 	n = length(dd.g)
 
-	dd.bMap = find(bActive)
+	dd.bMap = findall(bActive)
 	for i = 1:length(dd.bMap)
 		j = dd.bMap[i]
 		push!(dd.iR, i + n)
@@ -124,21 +124,21 @@ function degeneracyHunter(m::Model, ds::DegenSettings, f)
 		push!(dd.J, 1.0)
 	end
 
-	tm = toq()
+	tm = time() - t0
 	println(f,string(tm," seconds"))
 
 	print(f,"Assembling J_sparse... ")
-	tic()
+	t0 = time()
 	J_sparse = sparse(dd.iR, dd.jC, dd.J, n + length(dd.bMap), dd.nVar)
-	tm = toq()
+	tm = time() - t0
 	println(f,string(tm," seconds"))
 
 # Remove inactive constraints and variables from the Jacobian
 
-	dd.gMap = find(gActive)
+	dd.gMap = findall(gActive)
 
 	if(ds.removeFixedVar)
-		dd.vMap = find(.!vFixed)
+		dd.vMap = findall(.!vFixed)
 		cols = .!vFixed
 	else
 		dd.vMap = 1:nVar
@@ -149,9 +149,9 @@ function degeneracyHunter(m::Model, ds::DegenSettings, f)
 	rows = [gActive; ones(length(dd.bMap)) .> 0]
 
 	print(f,"Assembling J_active... ")
-	tic()
+	t0 = time()
 	dd.J_active = J_sparse[rows, cols]
-	tm = toq()
+	tm = time() - t0
 	println(f, string(tm," seconds"))
 
 	dd.nLambda = sum(rows)
@@ -168,7 +168,7 @@ function degeneracyHunter(m::Model, ds::DegenSettings, f)
 # Step 3.5: Perform SVD.
 
 	print("Computing SVD... ")
-	tic()
+	t0 = time()
 	# This is ugly, as it converts dd.J_active from a sparse to dense matrix for SVD.
 	# TODO: Use a sparse SVD implementation.
 	
@@ -176,20 +176,20 @@ function degeneracyHunter(m::Model, ds::DegenSettings, f)
 	# Recall for J_active:
 	#   row = constraints
 	#   columns = variables
-	F = LinAlg.svdfact(Matrix(dd.J_active))
-	tm = toq()
+	F = LinearAlgebra.svd(Matrix(dd.J_active))
+	tm = time() - t0
 	println(f, string(tm," seconds"))
 	
 	println(" ")
-	println(f,"Largest Singular Value: ",F[:S][1])
-	println(f,"Smallest Singular Value: ",F[:S][end])
+	println(f,"Largest Singular Value: ",F.S[1])
+	println(f,"Smallest Singular Value: ",F.S[end])
 
 	# Sort elements of U[:,end] from largest to smallest
 	if ds.printSmallestSVD > 0
 	
 		println("Considered left singular vector for smallest singular value...")
 		println("Sorted absolute value of elements from largest to smallest...")
-		sigma_sorted = sortperm(abs.(F[:U][:,end]),rev=true)
+		sigma_sorted = sortperm(abs.(F.U[:,end]),rev=true)
 	
 		k = 1
 		norm_total = 0
@@ -240,9 +240,9 @@ function degeneracyHunter(m::Model, ds::DegenSettings, f)
 			sets = Array(IrreducibleDegenerateSet,length(cand))
 
 			print(f,"Setting up MILP... ")
-			tic()
+			t0 = time()
 			dh = setupMILP(dd, ds)
-			tm = toq()
+			tm = time() - t0
 			println(f,string(tm," seconds"))
 
 			for c = 1:length(cand)

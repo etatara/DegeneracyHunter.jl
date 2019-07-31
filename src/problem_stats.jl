@@ -4,7 +4,7 @@
 ############################
 # ProblemStats
 
-type ProblemStats
+mutable struct ProblemStats
 	nCont::Int64
 	nContFixed::Int64
 	nContFree::Int64
@@ -123,7 +123,7 @@ function stringProblemStats()
 
 end
 
-function printProblemStats(ps::ProblemStats, f=STDOUT)
+function printProblemStats(ps::ProblemStats, f=stdout)
 
 	println(f," ")
 	println(f,"Continous Variables (total): ",ps.nCont)
@@ -131,7 +131,7 @@ function printProblemStats(ps::ProblemStats, f=STDOUT)
 	println(f,"\t Free: ",ps.nContFree)
 	println(f,"\t\t Lower Bounded Only: ",ps.nContLowerOnly)
 	println(f,"\t\t Upper Bounded Only: ",ps.nContUpperOnly)
-	println(f,"\t\t Lower \& Upper Bounded: ",ps.nContTwoBounds)
+	println(f,"\t\t Lower and Upper Bounded: ",ps.nContTwoBounds)
 	println(f,"\t\t Unbounded: ",ps.nContUnbounded)
 	println(f,"\t\t Active Bounds: ",ps.nContActiveBounds)
 	println(f," ")

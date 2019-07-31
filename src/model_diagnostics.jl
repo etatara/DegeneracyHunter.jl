@@ -4,7 +4,7 @@
 ###############
 ##### Exported functions for model diagnostics
 
-function round_to_bounds!(m::Model, epsilon::Float64=1.0E-6, f=STDOUT)
+function round_to_bounds!(m::Model, epsilon::Float64=1.0E-6, f=stdout)
 	# This function rounds each element of the solution vector to the closest bound if
 	# it is within epsilon.
 	# Why is this necessary? Some solvers (e.g., IPOPT) give solutions that are slightly
@@ -46,7 +46,7 @@ function round_to_bounds!(m::Model, epsilon::Float64=1.0E-6, f=STDOUT)
 
 end
 
-function printVariableDiagnostics(m::Model, epsilon::Float64=1.0E-6, f=STDOUT, status::Symbol=:Unknown)
+function printVariableDiagnostics(m::Model, epsilon::Float64=1.0E-6, f=stdout, status::Symbol=:Unknown)
 	x = get_x(m, status)
 
 	println(f,"Uninitialized Variables: ")
@@ -72,7 +72,7 @@ function printVariableDiagnostics(m::Model, epsilon::Float64=1.0E-6, f=STDOUT, s
 			print(f,v, " = ",x[i], ", bounds: [ ")
 
 			if(viol_lo)
-				print_with_color(:red, f, string(lo[i]))
+				printstyled(color=:red, f, string(lo[i]))
 			else
 				print(f, string(lo[i]))
 			end
@@ -80,7 +80,7 @@ function printVariableDiagnostics(m::Model, epsilon::Float64=1.0E-6, f=STDOUT, s
 			print(f, " , ")
 
 			if(viol_up)
-				print_with_color(:green, f, string(up[i]))
+				printstyled(color=:green, f, string(up[i]))
 			else
 				print(f, string(up[i]))
 			end
@@ -93,22 +93,22 @@ function printVariableDiagnostics(m::Model, epsilon::Float64=1.0E-6, f=STDOUT, s
 
 end
 
-function printInfeasibleEquations(m2::Model, eqns, f=STDOUT, status::Symbol=:Unknown)
+function printInfeasibleEquations(m2::Model, eqns, f=stdout, status::Symbol=:Unknown)
 
 	dd = DegenData(m2, status)
 	return printInfeasibleEquations(m2, dd, eqns, f)
 
 end
 
-function printInfeasibleEquations(m2::Model, dd::DegenData, eqns, f=STDOUT)
+function printInfeasibleEquations(m2::Model, dd::DegenData, eqns, f=stdout)
 
 	println(f,"Checking infeasibility for specified equations: ")
 
-	r = reshape(min(dd.g - dd.gLB, 0) + max(dd.g - dd.gUB, 0),length(dd.g))
+	r = reshape(min.(dd.g - dd.gLB, 0) + max.(dd.g - dd.gUB, 0),length(dd.g))
 
 	for i = eqns
 		print(f, "r[",string(i),"] = ")
-		print_with_color(:green,f,string(r[i]))
+		printstyled(color=:green,f,string(r[i]))
 		print(f,"\n")
 
 		printEquation(m2, dd, i, f)
@@ -121,13 +121,13 @@ function printInfeasibleEquations(m2::Model, dd::DegenData, eqns, f=STDOUT)
 
 end
 
-function printInfeasibleEquations(m2::Model, epsilon::Float64, f=STDOUT, status::Symbol=:Unknown)
+function printInfeasibleEquations(m2::Model, epsilon::Float64, f=stdout, status::Symbol=:Unknown)
 
 	dd = DegenData(m2, f, status)
 	return printInfeasibleEquations(m2, dd, epsilon, f)
 end
 
-function printInfeasibleEquations(m2::Model, dd::DegenData, epsilon::Float64, f=STDOUT)
+function printInfeasibleEquations(m2::Model, dd::DegenData, epsilon::Float64, f=stdout)
 
 	println(f,"Infeasible equations: ")
 
@@ -137,9 +137,9 @@ function printInfeasibleEquations(m2::Model, dd::DegenData, epsilon::Float64, f=
 	println("size(dd.gUB) = ",size(dd.gUB))
 	=#
 
-	r = reshape(min(dd.g - dd.gLB, 0) + max(dd.g - dd.gUB, 0),length(dd.g))
+	r = reshape(min.(dd.g - dd.gLB, 0) + max.(dd.g - dd.gUB, 0),length(dd.g))
 
-	k = sortperm(abs(r))
+	k = sortperm(abs.(r))
 
 	for j = 1:length(k)
 
@@ -147,7 +147,7 @@ function printInfeasibleEquations(m2::Model, dd::DegenData, epsilon::Float64, f=
 
 		if(abs(r[i]) >= epsilon || isnan(r[i]))
 			print(f,"r[",string(i),"] = ")
-			print_with_color(:green,f,string(r[i]))
+			printstyled(color=:green,f,string(r[i]))
 			print(f,"\n")
 
 			printEquation(m2, dd, i,f)
@@ -164,18 +164,18 @@ function printInfeasibleEquations(m2::Model, dd::DegenData, epsilon::Float64, f=
 
 end
 
-function printInactiveEquations(m2::Model, epsilon::Float64=1E-6, f=STDOUT)
+function printInactiveEquations(m2::Model, epsilon::Float64=1E-6, f=stdout)
 
 	dd = DegenData(m2, f)
 	return printInactiveEquations(m2, dd, epsilon, f)
 
 end
 
-function printInactiveEquations(m2::Model, dd::DegenData, epsilon::Float64=1E-6, f=STDOUT)
+function printInactiveEquations(m2::Model, dd::DegenData, epsilon::Float64=1E-6, f=stdout)
 
 	println(f,"Inactive Equations: ")
 
-	inactive = ((dd.gUB - dd.g) .> epsilon) & ((dd.g - dd.gLB) .> epsilon)
+#	inactive = ((dd.gUB - dd.g) .> epsilon) & ((dd.g - dd.gLB) .> epsilon)
 
 	for i = 1:length(dd.g)
 		if(((dd.gUB[i] - dd.g[i]) .> epsilon) & ((dd.g[i] - dd.gLB[i]) .> epsilon))
@@ -187,7 +187,7 @@ function printInactiveEquations(m2::Model, dd::DegenData, epsilon::Float64=1E-6,
 
 end
 
-function checkVarBounds(m::Model, f=STDOUT)
+function checkVarBounds(m::Model, f=stdout)
 
 	low = m.colLower
 	up = m.colUpper
@@ -201,7 +201,7 @@ function checkVarBounds(m::Model, f=STDOUT)
 			print(f,getname(m,i),":\t\t","Lower: ")
 
 			if(up[i] < low[i] || val[i] < low[i])
-				print_with_color(:red,f,string(low[i]))
+				printstyled(color=:red,f,string(low[i]))
 			else
 				print(f,low[i])
 			end
@@ -209,7 +209,7 @@ function checkVarBounds(m::Model, f=STDOUT)
 			print(f,"\t Upper: ")
 
 			if(up[i] < low[i] || val[i] > up[i])
-				print_with_color(:blue,f,string(up[i]))
+				printstyled(color=:blue,f,string(up[i]))
 			else
 				print(f,up[i])
 			end
@@ -217,7 +217,7 @@ function checkVarBounds(m::Model, f=STDOUT)
 			print(f,"\t Value: ")
 
 			if(val[i] < low[i] || val[i] > up[i])
-				print_with_color(:green,f,string(val[i]))
+				printstyled(color=:green,f,string(val[i]))
 			else
 				print(f,val[i])
 			end
@@ -230,7 +230,7 @@ function checkVarBounds(m::Model, f=STDOUT)
 
 end
 
-function printBound(m::Model, i::Int64, epsiActive::Float64, f=STDOUT)
+function printBound(m::Model, i::Int64, epsiActive::Float64, f=stdout)
 
 	v = Variable(m, i)
 
@@ -254,22 +254,22 @@ function printBound(m::Model, i::Int64, epsiActive::Float64, f=STDOUT)
 
 end
 
-function printRows(m::Model, rows::Int64, f=STDOUT; lite::Bool=false)
+function printRows(m::Model, rows::Int64, f=stdout; lite::Bool=false)
 	return printRows(m, Array([rows]), f, lite)
 end
 
-function printRows(m::Model, rows::Array{Int64,1}, f=STDOUT; lite::Bool=false)
+function printRows(m::Model, rows::Array{Int64,1}, f=stdout; lite::Bool=false)
 
 	dd = DegenData(m, f)
 	return printRows(m, dd, rows, f, lite)
 
 end
 
-function printRows(m::Model, dd::DegenData, rows::Int64, f=STDOUT; lite::Bool=false)
+function printRows(m::Model, dd::DegenData, rows::Int64, f=stdout; lite::Bool=false)
 	return printRows(m, dd, Array([rows]), f, lite=lite)
 end
 
-function printRows(m::Model, dd::DegenData, rows::Array{Int64,1}, f=STDOUT; lite::Bool=false)
+function printRows(m::Model, dd::DegenData, rows::Array{Int64,1}, f=stdout; lite::Bool=false)
 
 	if(lite && length(rows) == 1)
 	
@@ -295,7 +295,7 @@ function printRows(m::Model, dd::DegenData, rows::Array{Int64,1}, f=STDOUT; lite
 
 				println(f," ")
 				println(f,"Involved Variables:")
-				k = find(dd.iR .== r)
+				k = findall(dd.iR .== r)
 
 				for j in unique(dd.jC[k])
 					v = Variable(m,j)
@@ -320,7 +320,7 @@ function printRows(m::Model, dd::DegenData, rows::Array{Int64,1}, f=STDOUT; lite
 
 end
 
-function checkEquationScaling(m::Model, status::Symbol=:Unknown, f=STDOUT)
+function checkEquationScaling(m::Model, status::Symbol=:Unknown, f=stdout)
 
 	dd = DegenData(m, status)
 	

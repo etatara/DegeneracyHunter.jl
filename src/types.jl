@@ -4,14 +4,14 @@
 ##############
 ##### Functions and Types for setup
 
-type IrreducibleDegenerateSet
+mutable struct IrreducibleDegenerateSet
 	c::Int64
 	nElements::Float64
 	lambda::Array{Float64,1}
 	y::Array{Float64,1}
 end
 
-type DegenSettings
+mutable struct DegenSettings
 	includeBounds::Bool
 	includeWeaklyActive::Bool
 	removeFixedVar::Bool
@@ -27,7 +27,7 @@ function DegenSettings(mySolver)
 	return DegenSettings(false, true, true, true, 1E-6, 1E-6, 1.0E5, mySolver, 0.0)
 end
 
-type DegenData
+mutable struct DegenData
 
 # Point to analyze
 	x::Array{Float64,1}
@@ -63,8 +63,8 @@ end
 
 function DegenData()
 	return DegenData(Float64[],
-						Void,
-						Void,
+						nothing,
+						nothing,
 						Float64[],
 						Int64[],
 						Int64[],
@@ -80,7 +80,7 @@ function DegenData()
 						0)
 end
 
-function DegenData(m::Model, f=STDOUT, status::Symbol=:Unknown)
+function DegenData(m::Model, f=stdout, status::Symbol=:Unknown)
 
 	dd = DegenData()
 
@@ -118,7 +118,7 @@ function DegenData(m::Model, f=STDOUT, status::Symbol=:Unknown)
 end
 
 function get_x(m::Model, status::Symbol = :Unknown)
-	if(typeof(m.internalModel) == Void || status == :InfeasibleOrUnbounded || status == :Unsolved)
+	if(m.internalModel === nothing || status == :InfeasibleOrUnbounded || status == :Unsolved || status == :Unknown)
 		x = m.colVal
 	else
 	# Note: getsolution will throw an error if model is infeasible or unbounded with Gurobi
@@ -128,20 +128,20 @@ function get_x(m::Model, status::Symbol = :Unknown)
 	return x
 end
 
-function processNonlinearModel!(m::Model, dd::DegenData, f=STDOUT)
+function processNonlinearModel!(m::Model, dd::DegenData, f=stdout)
 
 # Initialize NLP evaluatorSetup
 
 	print(f,"Setting up NLP evaluator... ")
-	tic()
+	t0 = time()
 	dd.d = JuMP.NLPEvaluator(m)
-	tm = toq()
+	tm = time() - t0
 	println(f, string(tm, " seconds"))
 
 	print(f,"Initializing... ")
-	tic()
+	t0 = time()
 	MathProgBase.initialize(dd.d, [:ExprGraph, :Jac])
-	tm = toq()
+	tm = time() - t0
 	println(f, string(tm," seconds"))
 
 # Evaluate constraints
@@ -156,18 +156,18 @@ function processNonlinearModel!(m::Model, dd::DegenData, f=STDOUT)
 	# Columns: Variables
 
 	print(f,"Determining Jacobian structure... ")
-	tic()
+	t0 = time()
 	(dd.iR, dd.jC) = MathProgBase.jac_structure(dd.d)
-	tm = toq()
+	tm = time() - t0
 	println(f,string(tm," seconds"))
 
 	dd.J = zeros(length(dd.iR))
 
 # Query Jacobian at point
 	print(f,"Evaluating Jacobian... ")
-	tic()
+	t0 = time()
 	MathProgBase.eval_jac_g(dd.d,dd.J,dd.x)
-	tm = toq()
+	tm = time() - t0
 	println(f,string(tm, " seconds"))
 
 	return nothing
@@ -175,7 +175,7 @@ function processNonlinearModel!(m::Model, dd::DegenData, f=STDOUT)
 end
 
 # TODO: Update to work with quadratic models.
-function processLinearModel!(m::Model, dd::DegenData, f=STDOUT)
+function processLinearModel!(m::Model, dd::DegenData, f=stdout)
 
 	# Jacobian as a SparseMatrixCSC
 	if(!m.internalModelLoaded)

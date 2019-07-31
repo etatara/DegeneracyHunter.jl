@@ -1,12 +1,8 @@
-include("../DegeneracyHunter.jl")
 using JuMP
-#using Ipopt
-using AmplNLWriter
+using Ipopt
+using DegeneracyHunter
 
-#s = IpoptSolver(bound_relax_factor=0.0)
-s = AmplNLSolver("ipopt")
-
-m = Model(solver=s)
+m = Model(solver=IpoptSolver())
 
 @variable(m, -10 <= a[1:5] <= 10, start=1.0)
 @variable(m, -100 <= z <= 100, start=5.0)
